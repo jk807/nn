@@ -14,13 +14,14 @@
 - opencv-python>=4.5.0
 - pynput>=1.8
 - msgpack-rpc-python>=0.4.1
+- torch
 
 ## 项目结构
 ```
 drone_flight_sim/
 ├── main.py                      # 主程序入口（支持两种飞行模式）
 ├── drone_controller.py          # 无人机核心控制模块
-├── collision_handler.py         # 碰撞检测与处理模块
+├── collision_handler.py         # 碰撞检测与处理模块(简单神经网络)
 ├── flight_path.py               # 航点规划模块
 ├── keyboard_control.py          # 键盘控制模块
 ├── collision_data_collector.py  # 手动碰撞数据采集模块
