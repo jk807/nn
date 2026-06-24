@@ -28,6 +28,8 @@ The **Bipedal Walker** environment, based on the Box2D physics engine, simulates
 ## 1. Project Structure
 
 - **main.py**: Contains the training loop for both normal and hardcore modes.
+- **run.py**: Command-line entrypoint for training and evaluating PPO models.
+- **benchmark.py**: Benchmark evaluator for normal and hardcore models, generating CSV/Markdown reports.
 - **env_utils.py**: A utility script that configures the Bipedal Walker environment with optional features such as frame stacking, video recording, and reward normalization.
 - **logs/**: Directory for storing training logs.
 - **models/**: Directory for saving trained PPO models.
@@ -72,12 +74,58 @@ The `make_env()` function prepares the environment for training and evaluation w
 
 - **Clip Observations**: You can clip observations to avoid outliers during training by setting `clip_obs` to a certain value (default: 10.0).
 
+- **CLI Runner**: Use `run.py` to train or evaluate models from the command line with support for normal/hardcore mode, video recording, and custom timesteps.
+
 ### Example Usage:
 
 ```python
 env = make_env(env_name="BipedalWalker-v3", hardcore=True, record_video=True, use_monitor=True)
 ```
 
+### Command Line Usage
+
+Train a normal model:
+```bash
+python run.py --task train --mode normal --timesteps 100000 --model-name ppo_bipedalwalker
+```
+
+Train a hardcore model with video recording:
+```bash
+python run.py --task train --mode hardcore --timesteps 200000 --model-name ppo_bipedalwalker_hardcore --record-video
+```
+
+Evaluate a saved model:
+```bash
+python run.py --task eval --mode normal --model-path models/ppo_bipedalwalker.zip --eval-episodes 5
+```
+
+Evaluate and record video:
+```bash
+python run.py --task eval --mode normal --model-path models/ppo_bipedalwalker.zip --eval-episodes 3 --record-video
+```
+
+ bipedal_walker_rl_run
+=======
+ bipedal_walker_rl_run
+=======
+bipedal_walker_rl_run
+ main
+ main
+### Benchmark a pair of trained models
+```bash
+python benchmark.py --normal-model-path models/ppo_bipedalwalker --hardcore-model-path models/ppo_bipedalwalker_hardcore --eval-episodes 5
+```
+
+Benchmark 输出结果将保存到 `reports/benchmark_results.csv` 和 `reports/benchmark_report.md`，并且可选记录评估视频到 `reports/videos/`。
+
+ bipedal_walker_rl_run
+=======
+bipedal_walker_rl_run
+=======
+=======
+main
+main
+ main
 ### 3.2 observe_model()
 
 The observe_model() function loads a trained PPO model and evaluates it in the specified environment. It automatically checks if VecNormalize and VecFrameStack were used during training and applies them accordingly.
@@ -125,6 +173,26 @@ Recommendations for improving the agent's performance:
 - **Increased Exploration**: Methods such as ε-greedy or curiosity-driven exploration can help the agent learn more diverse strategies.
 - **Extended Training**: Additional timesteps can provide the agent with more experience and lead to better policies.
 
+## 6.5 学习曲线可视化（learning_curve.py）
+
+模块新增 `learning_curve.py` 脚本，自动完成"短训 → 读日志 → 画曲线"全流程，无需任何先决条件即可一键运行：
+
+```bash
+python learning_curve.py                       # 默认 5000 timesteps
+python learning_curve.py 20000                 # 指定 timesteps
+python learning_curve.py 5000 demo.png         # 指定 timesteps + 输出文件
+```
+
+工作流程：
+1. 调用 `env_utils.py` 的 Monitor wrapper 创建 `BipedalWalker-v3` 环境，自动写入 `logs/*.monitor.csv`
+2. 用 PPO MlpPolicy 训练指定步数（CPU 上 20000 步约 50 秒）
+3. 读取 Monitor 日志，控制台打印 markdown 训练摘要表（总 episode 数、平均/最高/末段奖励、平均轮长）
+4. 用 matplotlib 绘制双栏 PNG：左图 = reward vs episode + 滚动均值；右图 = episode length vs episode + 滚动均值
+
+下图为 20000 timesteps 训练 80 个 episode 后的输出（可见 episode length 从初始 1600 步逐步下降到 ~100 步，体现 agent 在学习避免无效探索）：
+
+![学习曲线](result_learning_curve.png)
+
 ## 7. Installation Requirements
 
 To install the necessary dependencies, use the provided `requirements.txt`:
@@ -140,6 +208,51 @@ Dependencies include:
 	•	stable-baselines3 for the PPO implementation
 	•	pandas and matplotlib for log analysis and visualizations
 
-## 8. Credits
+## 8. Model Comparison
+
+新增 `compare_models.py` 工具，用于对多个已训练的 PPO 模型进行对比评估，并生成 CSV、Markdown 报告和对比柱状图。
+
+### 用法示例
+
+```bash
+python compare_models.py --model-paths models/ppo_bipedalwalker models/ppo_bipedalwalker_hardcore --labels normal hardcore --mode normal --eval-episodes 5
+```
+
+### 可选参数
+
+- `--model-paths`: 至少两个模型路径，用空格分隔。
+- `--labels`: 与模型路径对应的标签。
+- `--mode`: `normal` 或 `hardcore`。
+- `--eval-episodes`: 评估轮数。
+- `--output-dir`: 报告输出目录，默认 `comparison_reports`。
+- `--record-video`: 是否录制评估视频。
+- `--video-folder`: 视频保存目录，默认 `comparison_reports/videos`。
+
+### 输出内容
+
+- `comparison_reports/comparison_results.csv`
+- `comparison_reports/comparison_report.md`
+- `comparison_reports/comparison_plot.png`
+
+ bipedal_walker_rl_run
+## 8.5 Batch Evaluation Boxplot
+
+新增 `batch_eval_boxplot.py` 工具，用于对多个已训练模型进行重复评估并绘制每个模型的奖励分布箱线图。
+
+### 用法示例
+
+```bash
+python batch_eval_boxplot.py --model-paths models/ppo_bipedalwalker models/ppo_bipedalwalker_hardcore --labels normal hardcore --mode normal --eval-episodes 5 --trials 10
+```
+
+### 输出内容
+
+- `comparison_reports/batch_boxplot_results.csv` (每一行为 label, model_path, reward)
+- `comparison_reports/batch_boxplot.png` (箱线图)
+
+
+=======
+ main
+## 9. Credits
 
 This project is based on the work of Oleg Klimov, adapted for PPO training using Stable Baselines3.
